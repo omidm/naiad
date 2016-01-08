@@ -25,9 +25,9 @@ for the entry point of the program.
 program. After compiling the Naiad Library (calling sh build_mono.sh in the
     parent directory) copy the necessary generated .dll files to your folder.
 Some useful files cou;d be found in the following:
-    <parent-dir>/Naiad/Naiad/bin/Debug/Microsoft.Research.Naiad.dll
-    <parent-dir>/Naiad/Examples/bin/Debug/Microsoft.Research.Naiad.Lindi.dll
-    <parent-dir>/Naiad/Examples/bin/Debug/Microsoft.Research.Naiad.GraphLINQ.dll
+    <parent-dir>/Naiad/bin/Debug/Microsoft.Research.Naiad.dll
+    <parent-dir>/Examples/bin/Debug/Microsoft.Research.Naiad.Lindi.dll
+    <parent-dir>/Examples/bin/Debug/Microsoft.Research.Naiad.GraphLINQ.dll
 
 4. You need to compile the program while referencing the libraries:
     $ dmcs <program>.cs /reference:Microsoft.Research.Naiad.dll
