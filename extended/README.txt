@@ -66,6 +66,7 @@ To run multiprocess, specify -p, -n, and -h
       M2> NaiadProgram.exe -p 1 -n 2 -h M1:2101 M2:2101
 To run multiprocess on one machine, specify -p, -n and --local for each process
 
+** NOTE: the hostname should be in the form of dns not ip address.
 
 ** NOTE: In the distributed mode when running with mono also pass the
 "--inlineserializer" options for non-primitive data types (e.g. List<float>).

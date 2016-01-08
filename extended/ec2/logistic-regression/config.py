@@ -8,7 +8,7 @@
 # US West (Oregon) Region
 EC2_LOCATION                    = 'us-west-2'
 UBUNTU_AMI                      = 'ami-fa9cf1ca'
-NAIAD_AMI                       = ''
+NAIAD_AMI                       = 'ami-ea3c278b'
 KEY_NAME                        = 'omidm-sing-key-pair-us-west-2'
 SECURITY_GROUP                  = 'nimbus_sg_uswest2'
 WORKER_INSTANCE_TYPE            = 'c3.2xlarge'
@@ -34,7 +34,7 @@ SAMPLE_NUM_M                    = 100
 RUN_WITH_TASKSET                = False
 WORKER_TASKSET                  = '0-1,4-5'
 # WORKER_TASKSET                = '0-3,8-11'
-FIRST_PORT                      = 5800
+FIRST_PORT                      = 2101
 
 # logging configurations
 STD_OUT_LOG                     = 'ec2_log.txt'

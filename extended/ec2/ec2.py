@@ -79,12 +79,15 @@ def get_ip_addresses(location, placement_group='*', instance_type='*'):
 
 def get_dns_names(location, placement_group='*'):
   ec2 = boto.ec2.connect_to_region(location)
-  dns_list = []
+  dns_list = {}
+  dns_list["public"]  = []
+  dns_list["private"] = []
   instances = ec2.get_only_instances(
       filters={"placement-group-name":placement_group})
   for inst in instances:
     if inst.state == 'running':
-      dns_list.append(inst.public_dns_name)
+      dns_list["public"].append(inst.public_dns_name)
+      dns_list["private"].append(inst.private_dns_name)
   return dns_list
     
 

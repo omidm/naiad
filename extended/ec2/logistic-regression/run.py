@@ -42,7 +42,7 @@ args = parser.parse_args()
 if args.action == 's':
   ec2.run_instances(
       config.EC2_LOCATION,
-      config.NIMBUS_AMI,
+      config.NAIAD_AMI,
       config.WORKER_INSTANCE_NUM,
       config.KEY_NAME,
       config.SECURITY_GROUP,
@@ -77,14 +77,21 @@ else:
   else:
     worker_p_ips = list(ip_addresses["private"])
   
-  print "Worker IPs:           " + str(worker_ips)
-  print "Worker Private IPs:   " + str(worker_p_ips)
+  dns_names = ec2.get_dns_names(
+      config.EC2_LOCATION,
+      placement_group=config.PLACEMENT_GROUP);
   
+  worker_dnss = list(dns_names["public"])
+  if (not args.useprivate):
+    worker_p_dnss = list(worker_dnss)
+  else:
+    worker_p_dnss = list(dns_names["private"])
+
   if args.action == 'w':
     utils.test_nodes(worker_ips)
    
   elif args.action == 'r':
-    utils.run_experiment(worker_ips, worker_p_ips)
+    utils.run_experiment(worker_ips, worker_p_dnss)
   
   elif args.action == 'c':
     utils.collect_output_data(worker_ips)
