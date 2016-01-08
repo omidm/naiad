@@ -136,10 +136,10 @@ public class LogisticRegression
 
       var end_samples  = samples.Iterate((lc , s) => lr.Advance(s), iteration_num, "LogisticRegression");
 
-      var output = end_samples.Subscribe(x => {
-                                                Console.Out.WriteLine("Final weight: " + PrintList(lr.weight_));
-                                                Console.Out.Flush();
-                                             });
+      // var output = end_samples.Subscribe(x => {
+      //                                           Console.Out.WriteLine("Final weight: " + PrintList(lr.weight_));
+      //                                           Console.Out.Flush();
+      //                                        });
 
       Console.Out.WriteLine("Before Activate!");
       Console.Out.Flush();
