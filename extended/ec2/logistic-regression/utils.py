@@ -91,17 +91,10 @@ def  test_nodes(node_ips):
     print '** Node Tested: ' + ip
 
 
-def collect_output_data(controller_ip, worker_ips):
+def collect_output_data(worker_ips):
 
   subprocess.call(['rm', '-rf', config.OUTPUT_PATH])
   subprocess.call(['mkdir', '-p', config.OUTPUT_PATH])
-
-  subprocess.Popen(['scp', '-r', '-i', config.PRIVATE_KEY,
-      '-o', 'UserKnownHostsFile=/dev/null',
-      '-o', 'StrictHostKeyChecking=no',
-      'ubuntu@' + controller_ip + ':' + config.EC2_NAIAD_ROOT +
-      config.REL_CONTROLLER_PATH + config.STD_OUT_LOG,
-      config.OUTPUT_PATH])
 
   for ip in worker_ips:
     subprocess.Popen(['scp', '-r', '-i', config.PRIVATE_KEY,
