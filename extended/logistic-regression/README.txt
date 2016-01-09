@@ -32,4 +32,6 @@ To run an example over single node:
 To run an example over two nodes on your local machine:
     $ make run-dist
 
+Default make is for Release mode, you can add "debug" prefix to generate the
+Debug mode, e.g. "make debug" or "make debug-run"
 
