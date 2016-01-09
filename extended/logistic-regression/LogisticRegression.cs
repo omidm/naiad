@@ -22,7 +22,7 @@ public class LogisticRegression
   public Int32 dimension_;
   public Int32 iteration_num_;
   public Int64 partition_num_;
-  public Int64 sample_num_m_;
+  public double sample_num_m_;
   // workers could be multiple threaded handling more than one core.
   public Int64 worker_num_;
   public Int64 snpw_; // sample_num_per_worker_;
@@ -44,7 +44,7 @@ public class LogisticRegression
                       Int32 dimension,
                       Int32 iteration_num,
                       Int64 partition_num,
-                      Int64 sample_num_m,
+                      double sample_num_m,
                       Int64 worker_num) {
     procid_ = procid;
     dimension_ = dimension;
@@ -53,9 +53,13 @@ public class LogisticRegression
     sample_num_m_ = sample_num_m;
     worker_num_ = worker_num;
 
-    Debug.Assert(partition_num_ % worker_num_ == 0);
-    Debug.Assert((sample_num_m_ * (Int64)1e6) % partition_num_ == 0);
-    snpw_ = sample_num_m_ * (Int64)1e6 / worker_num_;
+    if (partition_num_ % worker_num_ != 0) {
+      throw new Exception("partition number is not divisible by worker number!");
+    }
+    if ((Int64)(sample_num_m_ * 1e6) % partition_num_ != 0) {
+      throw new Exception("sample number is not divisible by partition number!");
+    }
+    snpw_ = (Int64)(sample_num_m_ * 1e6) / worker_num_;
     pnpw_ = partition_num_ / worker_num_;
 
     weight_ = new Weight();
@@ -109,7 +113,7 @@ public class LogisticRegression
       Int32 dimension = Int32.Parse(args[0]);
       Int32 iteration_num = Int32.Parse(args[1]);
       Int64 partition_num = Int32.Parse(args[2]);
-      Int64 sample_num_m = Int64.Parse(args[3]);
+      double sample_num_m = Convert.ToDouble(args[3]);
       Int64 worker_num = Int64.Parse(args[4]);
 
       Console.Out.WriteLine("procid: " + procid);
@@ -154,6 +158,7 @@ public class LogisticRegression
       computation.Join();
 
       Console.Out.WriteLine("After Join!");
+      Console.Out.WriteLine("Final weight: " + PrintList(lr.weight_));
       Console.Out.WriteLine("Counter 1 from procid: " + lr.procid_ + " " +  PrintList(lr.counter_1_));
       Console.Out.WriteLine("Counter 2 from procid: " + lr.procid_ + " " +  PrintList(lr.counter_2_));
       Console.Out.WriteLine("Counter 3 from procid: " + lr.procid_ + " " +  PrintList(lr.counter_3_));
