@@ -166,42 +166,37 @@ public class LogisticRegression
     }
   }
 
+  private List<Sample> LocalReduce(int k, IEnumerable<Sample> list) {
+    var w = new Weight();
+    lock(lock_) {
+      w = weight_;
+    }
+
+    int count = 0;
+    Weight reduced = new Weight(new double[dimension_]);
+    foreach (var s in list) {
+      var scale = (1 / (1 + Math.Exp(s[1] * VectorDot(s, 2, w, 0))) - 1) * s[1];
+      VectorAccWithScale(ref reduced, 0, s, 2, scale);
+      count++;
+    }
+
+    lock(lock_) {
+      counter_1_.Add(count);
+    }
+
+    var out_list = new List<Sample>();
+    out_list.Add(reduced);
+    return out_list;
+  }
 
   public Stream<Sample, IterationIn<Epoch>> Advance(Stream<Sample, IterationIn<Epoch>> samples)
   {
     Console.Out.WriteLine("**Begin Advance**");
     Console.Out.Flush();
 
-    var next_samples = samples;
 
-    var scaled_samples =
-      samples.Select(s => {
-                            var w = new Weight();
-                            lock(lock_) {
-                              w = weight_;
-                            }
-                            var scale = (1 / (1 + Math.Exp(s[1] * VectorDot(s, 2, w, 0))) - 1) * s[1];
-                            // Console.Out.WriteLine("SELECT");
-                            // Console.Out.Flush();
-                            return VectorScale(s, 2, scale);
-                          });
-
-    var local_reduced =
-      scaled_samples.GroupBy(s => (int)(s[0]),
-                             (k, list) => {
-                                            int c = 0;
-                                            var out_list = new List<Sample>();
-                                            Weight reduced = new Weight(new double[dimension_]);
-                                            foreach (var sample in list) {
-                                              VectorAdd(ref reduced, 0, sample, 2);
-                                              c++;
-                                            }
-                                            out_list.Add(reduced);
-                                            lock(lock_) {
-                                              counter_1_.Add(c);
-                                            }
-                                            return out_list;
-                                          });
+    var local_reduced = samples.GroupBy(s => (int)(s[0]),
+                                        (k, list) => LocalReduce(k, list));
 
     var global_reduced =
       local_reduced.GroupBy(s => 0,
@@ -219,7 +214,7 @@ public class LogisticRegression
                                            var out_list = new List<Sample>();
                                            Weight reduced = new Weight(new double[dimension_]);
                                            foreach (var weight in list) {
-                                             VectorAdd(ref reduced, 0, weight, 0);
+                                             VectorAccWithScale(ref reduced, 0, weight, 0, 1);
                                              c++;
                                            }
                                            lock(lock_) {
@@ -236,7 +231,7 @@ public class LogisticRegression
                                          });
 
     var bottle_neck =
-      global_reduced.CoGroupBy(next_samples,
+      global_reduced.CoGroupBy(samples,
                                s => (int)(s[0]),
                                s => (int)(s[0]),
                                (k, weights, nsamples) => {
@@ -289,21 +284,12 @@ public class LogisticRegression
     return result;
   }
 
-  public static List<double> VectorScale(List<double> v, int of, double scale) {
-    List<double> result = new List<double>();
-    for (int i = 0; i < of; ++i) {
-      result.Add(v[i]);
-    }
-    for (int i = 0; i < (v.Count - of); ++i) {
-      result.Add(scale * v[i + of]);
-    }
-    return result;
-  }
-
-  public static void VectorAdd(ref List<double> v1, int of1, List<double> v2, int of2) {
+  public static void VectorAccWithScale(ref List<double> v1, int of1,
+                                        List<double> v2, int of2,
+                                        double scale) {
     Debug.Assert((v1.Count - of1) == (v2.Count - of2));
     for (int i = 0; i < (v1.Count - of1); ++i) {
-      v1[i+of1] = v1[i+of1] + v2[i+of2];
+      v1[i+of1] = v1[i+of1] + scale * v2[i+of2];
     }
   }
 
