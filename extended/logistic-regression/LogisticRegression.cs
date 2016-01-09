@@ -166,7 +166,31 @@ public class LogisticRegression
     }
   }
 
-  private List<Sample> LocalReduce(int k, IEnumerable<Sample> list) {
+  public Stream<Sample, IterationIn<Epoch>> Advance(Stream<Sample, IterationIn<Epoch>> samples)
+  {
+    Console.Out.WriteLine("**Begin Advance**");
+    Console.Out.Flush();
+
+
+    var local_reduced =
+      samples.GroupBy(s => (int)(s[0]), (k, list) => Gradient(k, list));
+
+    var global_reduced =
+      local_reduced.GroupBy(s => 0, (k, list) => Reduction(k, list));
+
+    var next_samples =
+      global_reduced.CoGroupBy(samples,
+                               s => (int)(s[0]),
+                               s => (int)(s[0]),
+                               (k, weights, new_samples) => Synch(k, weights, new_samples));
+
+    Console.Out.WriteLine("**End Advance**");
+    Console.Out.Flush();
+
+    return next_samples;
+  }
+
+  private List<Sample> Gradient(int k, IEnumerable<Sample> list) {
     var w = new Weight();
     lock(lock_) {
       w = weight_;
@@ -189,73 +213,50 @@ public class LogisticRegression
     return out_list;
   }
 
-  public Stream<Sample, IterationIn<Epoch>> Advance(Stream<Sample, IterationIn<Epoch>> samples)
-  {
-    Console.Out.WriteLine("**Begin Advance**");
-    Console.Out.Flush();
+  private List<Sample> Reduction(int k, IEnumerable<Sample> list) {
+    int count = 0;
+    Weight reduced = new Weight(new double[dimension_]);
+    foreach (var weight in list) {
+      VectorAccWithScale(ref reduced, 0, weight, 0, 1);
+      count++;
+    }
 
+    lock(lock_) {
+      counter_2_.Add(count);
+      loop_index_++;
+      long temp = stopwatch_.ElapsedMilliseconds;
+      long diff = temp - elapsed_milli_;
+      elapsed_milli_ = temp;
+      Console.Out.WriteLine("Loop " + loop_index_ + " elapsed(ms): " + diff);
+      Console.Out.Flush();
+    }
 
-    var local_reduced = samples.GroupBy(s => (int)(s[0]),
-                                        (k, list) => LocalReduce(k, list));
+    var out_list = new List<Sample>();
+    for (int i = 0; i < partition_num_; ++i) {
+      var w = new Weight();
+      w.Add(i);
+      w.AddRange(reduced);
+      out_list.Add(w);
+    }
+    return out_list;
 
-    var global_reduced =
-      local_reduced.GroupBy(s => 0,
-                            (k, list) => {
-                                           lock(lock_) { 
-                                             loop_index_++;
-                                             long temp = stopwatch_.ElapsedMilliseconds;
-                                             long diff = temp - elapsed_milli_;
-                                             elapsed_milli_ = temp;
-                                             Console.Out.WriteLine("Loop " + loop_index_ + " elapsed(ms): " + diff);
-                                             Console.Out.Flush();
-                                           }
-
-                                           int c = 0;
-                                           var out_list = new List<Sample>();
-                                           Weight reduced = new Weight(new double[dimension_]);
-                                           foreach (var weight in list) {
-                                             VectorAccWithScale(ref reduced, 0, weight, 0, 1);
-                                             c++;
-                                           }
-                                           lock(lock_) {
-                                             counter_2_.Add(c);
-                                           }
-
-                                           for (int i = 0; i < partition_num_; ++i) {
-                                             var w = new Weight();
-                                             w.Add(i);
-                                             w.AddRange(reduced);
-                                             out_list.Add(w);
-                                           }
-                                           return out_list;
-                                         });
-
-    var bottle_neck =
-      global_reduced.CoGroupBy(samples,
-                               s => (int)(s[0]),
-                               s => (int)(s[0]),
-                               (k, weights, nsamples) => {
-                                                int c = 0;
-                                                foreach (var w in weights) {
-                                                  lock(lock_) {
-                                                    for (int i = 0; i < dimension_; ++i) {
-                                                      weight_[i] = w[i+1];
-                                                    }
-                                                  }
-                                                  c++;
-                                                }
-                                                lock(lock_) {
-                                                  counter_3_.Add(c);
-                                                }
-                                                return nsamples;
-                                              });
-
-    Console.Out.WriteLine("**End Advance**");
-    Console.Out.Flush();
-
-    return bottle_neck;
   }
 
+  private IEnumerable<Sample> Synch(int k, IEnumerable<Weight> weights, IEnumerable<Sample> samples) {
+    int count = 0;
+    foreach (var w in weights) {
+      lock(lock_) {
+        for (int i = 0; i < dimension_; ++i) {
+          weight_[i] = w[i+1];
+        }
+      }
+      count++;
+    }
+    lock(lock_) {
+      counter_3_.Add(count);
+    }
+    return samples;
+  }
 
   public IEnumerable<Sample> GenerateSamples() {
     var random = new Random(procid_);
@@ -293,8 +294,6 @@ public class LogisticRegression
     }
   }
 
-
-
   public static string PrintList<T>(List<T> list) {
     int length = list.Count;
     if (length == 0) {
@@ -309,4 +308,5 @@ public class LogisticRegression
     return str;
   }
 }
+
 
