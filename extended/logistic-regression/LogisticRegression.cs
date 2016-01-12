@@ -33,12 +33,14 @@ public class LogisticRegression
   private Object lock_ = new Object();
 
   // properties for monitoring and profiling the progress.
+  public int p_counter_;
   public int loop_index_;
-  public long elapsed_milli_;
+  public double gradient_elapsed_;
+  public long loop_stamp_;
+  public long gradient_stamp_;
   public List<int> counter_1_;
   public List<int> counter_2_;
   public List<int> counter_3_;
-  public System.Diagnostics.Stopwatch stopwatch_;
 
   LogisticRegression (Int32 procid,
                       Int32 dimension,
@@ -67,13 +69,14 @@ public class LogisticRegression
       weight_.Add(1);
     }
 
+    p_counter_ = 0;
     loop_index_ = 0;
-    elapsed_milli_ = 0;
+    gradient_elapsed_ = 0;
+    loop_stamp_ = Stopwatch.GetTimestamp();
+    gradient_stamp_ = Stopwatch.GetTimestamp();
     counter_1_ = new List<int>();
     counter_2_ = new List<int>();
     counter_3_ = new List<int>();
-    stopwatch_ = new System.Diagnostics.Stopwatch();
-    stopwatch_.Start();
   }
 
   static void PrintHelp() {
@@ -194,6 +197,9 @@ public class LogisticRegression
     var w = new Weight();
     lock(lock_) {
       w = weight_;
+      if (p_counter_ == 0) {
+        gradient_stamp_ = Stopwatch.GetTimestamp();
+      }
     }
 
     int count = 0;
@@ -206,6 +212,10 @@ public class LogisticRegression
 
     lock(lock_) {
       counter_1_.Add(count);
+      if (++p_counter_ == pnpw_) {
+        p_counter_ = 0;
+        gradient_elapsed_ = (double)(Stopwatch.GetTimestamp() - gradient_stamp_) / (double)(Stopwatch.Frequency);
+      }
     }
 
     var out_list = new List<Sample>();
@@ -223,12 +233,6 @@ public class LogisticRegression
 
     lock(lock_) {
       counter_2_.Add(count);
-      loop_index_++;
-      long temp = stopwatch_.ElapsedMilliseconds;
-      long diff = temp - elapsed_milli_;
-      elapsed_milli_ = temp;
-      Console.Out.WriteLine("Loop " + loop_index_ + " elapsed(ms): " + diff);
-      Console.Out.Flush();
     }
 
     var out_list = new List<Sample>();
@@ -254,6 +258,15 @@ public class LogisticRegression
     }
     lock(lock_) {
       counter_3_.Add(count);
+      if (++p_counter_ == pnpw_) {
+        p_counter_ = 0;
+        loop_index_++;
+        var elapsed = (double)(Stopwatch.GetTimestamp() - loop_stamp_) / (double)(Stopwatch.Frequency);
+        loop_stamp_ = Stopwatch.GetTimestamp();
+        Console.Out.WriteLine("Loop {0:D2} gradient(ms): {1:F2} total(ms): {2:F2} ",
+                              loop_index_, 1000 * gradient_elapsed_, 1000 * elapsed);
+        Console.Out.Flush();
+      }
     }
     return samples;
   }
