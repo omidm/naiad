@@ -1,5 +1,6 @@
 
 using System;
+using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
 
@@ -27,6 +28,7 @@ public class LogisticRegression
   public Int64 worker_num_;
   public Int64 snpw_; // sample_num_per_worker_;
   public Int64 pnpw_; // partition_num_per_worker_
+  public Int64 spin_wait_;
   public Weight weight_;
 
   // multi-threaded worker need synchronization
@@ -47,13 +49,15 @@ public class LogisticRegression
                       Int32 iteration_num,
                       Int64 partition_num,
                       double sample_num_m,
-                      Int64 worker_num) {
+                      Int64 worker_num,
+                      Int64 spin_wait) {
     procid_ = procid;
     dimension_ = dimension;
     iteration_num_ = iteration_num;
     partition_num_ = partition_num;
     sample_num_m_ = sample_num_m;
     worker_num_ = worker_num;
+    spin_wait_ = spin_wait;
 
     if (partition_num_ % worker_num_ != 0) {
       throw new Exception("partition number is not divisible by worker number!");
@@ -81,15 +85,21 @@ public class LogisticRegression
 
   static void PrintHelp() {
     string str = "\nUsage:";
-    str += "\n  LogisticRegression.exe <dimension> <iteration_num> <partition_num> <sample_num in million> <worker_num>";
+    str += "\n  LogisticRegression.exe <dimension>";
+    str += "\n                         <iteration_num>";
+    str += "\n                         <partition_num>";
+    str += "\n                         <sample_num in million>";
+    str += "\n                         <worker_num>";
+    str += "\n                         <spin_wait in micro seconds>";
     str += "\n\nNotes:";
+    str += "\n  if spin_wait is not zero the gradient phase is replaced by an exact busy loop.";
     str += "\n  naiad -n option should be worker_num";
     str += "\n  naiad -p option should be intergers from 0 to (worker_num-1)";
     str += "\n  naiad -t option is better to be the number of cores at worker";
     str += "\n  use --inlineserializer option in the distributed mode";
     str += "\n\nExample of running two local nodes:";
-    str += "\n   mono LogisticRegression.exe -n 2 --local -p 0 -t 2 --inlineserializer 10 15 4 1 2";
-    str += "\n   mono LogisticRegression.exe -n 2 --local -p 1 -t 2 --inlineserializer 10 15 4 1 2";
+    str += "\n   mono LogisticRegression.exe -n 2 --local -p 0 -t 2 --inlineserializer 10 15 4 1 2 0";
+    str += "\n   mono LogisticRegression.exe -n 2 --local -p 1 -t 2 --inlineserializer 10 15 4 1 2 0";
     str += "\n";
     Console.Out.WriteLine(str);
     Console.Out.Flush();
@@ -101,14 +111,9 @@ public class LogisticRegression
     using (var computation = NewComputation.FromArgs(ref args))
     {
 
-      if (args.Length != 5) {
+      if (args.Length != 6) {
         PrintHelp();
         return;
-      } else if (args.Length == 1) {
-        if (args[0] == "--help" || args[0] == "-h") {
-          PrintHelp();
-          return;
-        }
       }
 
 
@@ -118,6 +123,7 @@ public class LogisticRegression
       Int64 partition_num = Int32.Parse(args[2]);
       double sample_num_m = Convert.ToDouble(args[3]);
       Int64 worker_num = Int64.Parse(args[4]);
+      Int64 spin_wait = Int64.Parse(args[5]);
 
       Console.Out.WriteLine("procid: " + procid);
       Console.Out.WriteLine("dimension: " + dimension);
@@ -125,6 +131,7 @@ public class LogisticRegression
       Console.Out.WriteLine("partition_num: " + partition_num);
       Console.Out.WriteLine("sample_num_m: " + sample_num_m);
       Console.Out.WriteLine("worker_num: " + worker_num);
+      Console.Out.WriteLine("spin_wait: " + spin_wait);
       Console.Out.Flush();
 
       LogisticRegression lr =
@@ -133,7 +140,8 @@ public class LogisticRegression
                                iteration_num,
                                partition_num,
                                sample_num_m,
-                               worker_num);
+                               worker_num,
+                               spin_wait);
 
       Stream<Sample, Epoch> samples = lr.GenerateSamples().AsNaiadStream(computation);
 
@@ -204,10 +212,28 @@ public class LogisticRegression
 
     int count = 0;
     Weight reduced = new Weight(new double[dimension_]);
-    foreach (var s in list) {
-      var scale = (1 / (1 + Math.Exp(s[1] * VectorDot(s, 2, w, 0))) - 1) * s[1];
-      VectorAccWithScale(ref reduced, 0, s, 2, scale);
-      count++;
+
+    if (spin_wait_ == 0) {
+      foreach (var s in list) {
+        var scale = (1 / (1 + Math.Exp(s[1] * VectorDot(s, 2, w, 0))) - 1) * s[1];
+        VectorAccWithScale(ref reduced, 0, s, 2, scale);
+        count++;
+      }
+    } else {
+      bool first_loop = true;
+      var stamp = Stopwatch.GetTimestamp();
+      while(true) {
+        Thread.SpinWait(1000);
+        var elapsed = ((double)(Stopwatch.GetTimestamp() - stamp) / (double)(Stopwatch.Frequency)) * 1e6;
+        if (elapsed > spin_wait_) {
+          if (first_loop) {
+            Console.Out.WriteLine("spin_wait expired even before first loop!");
+            Console.Out.Flush();
+          }
+          break;
+        }
+        first_loop = false;
+      }
     }
 
     lock(lock_) {
