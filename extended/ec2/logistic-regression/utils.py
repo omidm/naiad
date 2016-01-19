@@ -50,6 +50,7 @@ def run_worker(worker_num, worker_ip, pid, host_list):
   worker_command += ' ' + str(config.PARTITION_NUM)
   worker_command += ' ' + str(config.SAMPLE_NUM_M)
   worker_command += ' ' + str(worker_num)
+  worker_command += ' ' + str(config.SPIN_WAIT_US)
   worker_command += ' &> ' + str(pid) + '_' + config.STD_OUT_LOG
 
   subprocess.Popen(['ssh', '-i', config.PRIVATE_KEY,

@@ -8,7 +8,7 @@
 # US West (Oregon) Region
 EC2_LOCATION                    = 'us-west-2'
 UBUNTU_AMI                      = 'ami-fa9cf1ca'
-NAIAD_AMI                       = 'ami-ea3c278b'
+NAIAD_AMI                       = 'ami-10b1ab71'
 KEY_NAME                        = 'omidm-sing-key-pair-us-west-2'
 SECURITY_GROUP                  = 'nimbus_sg_uswest2'
 WORKER_INSTANCE_TYPE            = 'c3.2xlarge'
@@ -28,13 +28,14 @@ WORKER_INSTANCE_NUM             = 25
 WORKER_PER_INSTANCE             = 1
 WORKER_THREAD_NUM               = 8
 DIMENSION                       = 10
-ITERATION_NUM                   = 30
+ITERATION_NUM                   = 20
 PARTITION_NUM                   = 2000
 SAMPLE_NUM_M                    = 100
+SPIN_WAIT_US                    = 0
 RUN_WITH_TASKSET                = False
 WORKER_TASKSET                  = '0-1,4-5'
 # WORKER_TASKSET                = '0-3,8-11'
-FIRST_PORT                      = 2101
+FIRST_PORT                      = 5800
 
 # logging configurations
 STD_OUT_LOG                     = 'ec2_log.txt'
@@ -43,7 +44,7 @@ OUTPUT_PATH                     = 'output/'
 
 # Build and Path configuration
 EC2_NAIAD_ROOT                  = '~/cloud/src/naiad/'
-REL_WORKER_PATH                 = 'extended/logistic-regression/'
+REL_WORKER_PATH                 = 'extended/logistic-regression/Release/'
 WORKER_EXE                      = 'LogisticRegression.exe'
 
 
