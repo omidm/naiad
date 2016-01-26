@@ -71,12 +71,6 @@ else:
     print ip_addresses
     exit(0)
 
-  worker_ips = list(ip_addresses["public"])
-  if (not args.useprivate):
-    worker_p_ips = list(worker_ips)
-  else:
-    worker_p_ips = list(ip_addresses["private"])
-  
   dns_names = ec2.get_dns_names(
       config.EC2_LOCATION,
       placement_group=config.PLACEMENT_GROUP);
@@ -88,17 +82,17 @@ else:
     worker_p_dnss = list(dns_names["private"])
 
   if args.action == 'w':
-    utils.test_nodes(worker_ips)
+    utils.test_nodes(worker_dnss)
    
   elif args.action == 'r':
-    utils.run_experiment(worker_ips, worker_p_dnss)
+    utils.run_experiment(worker_dnss, worker_p_dnss)
   
   elif args.action == 'c':
-    utils.collect_output_data(worker_ips)
+    utils.collect_output_data(worker_dnss)
   
   elif args.action == 't':
-    utils.terminate_experiment(worker_ips)
-    utils.clean_output_data(worker_ips)
+    utils.terminate_experiment(worker_dnss)
+    utils.clean_output_data(worker_dnss)
   
   else :
     print "Unknown action: " + args.action
