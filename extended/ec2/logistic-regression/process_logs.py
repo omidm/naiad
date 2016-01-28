@@ -50,7 +50,7 @@ total_gradient_sum = 0
 iter_nums = []
     
 print '--------------------------------------------------------------------------------------'
-print '   worker     iter    gradient        total'
+print '   worker     iter    gradient     overhead      total'
 print '--------------------------------------------------------------------------------------'
 
 for pid in range(0, N):
@@ -69,7 +69,11 @@ for pid in range(0, N):
       gradient /= 1000
       assert(idx == iter_idx)
       if (args.collapse):
-        print '          {:8.0f} {:8.3f}        {:8.3f}'.format(idx, gradient, loop)
+        print '          {:8.0f} {:8.3f}     {:8.3f}      {:8.3f}'.format(
+                    idx,
+                    gradient,
+                    loop - gradient,
+                    loop)
       if idx <= TI:
         continue
       iter_num     += 1
@@ -80,8 +84,17 @@ for pid in range(0, N):
   total_loop_sum     += loop_sum/iter_num
   total_gradient_sum += gradient_sum/iter_num
 
-  print '{:8.0f}: {:8.0f} {:8.3f}        {:8.3f}'.format(pid+1, iter_num, gradient_sum/iter_num, loop_sum/iter_num)
+  print '{:8.0f}: {:8.0f} {:8.3f}     {:8.3f}      {:8.3f}'.format(
+            pid+1,
+            iter_num,
+            gradient_sum/iter_num,
+            loop_sum/iter_num - gradient_sum/iter_num,
+            loop_sum/iter_num)
 
 print '--------------------------------------------------------------------------------------'
-print ' Average: {:8.0f} {:8.3f}        {:8.3f}'.format(iter_nums[0], total_gradient_sum/N, total_loop_sum/N)
+print ' Average: {:8.0f} {:8.3f}     {:8.3f}      {:8.3f}'.format(
+            iter_nums[0],
+            total_gradient_sum/N,
+            total_loop_sum/N - total_gradient_sum/N,
+            total_loop_sum/N)
 print '--------------------------------------------------------------------------------------'

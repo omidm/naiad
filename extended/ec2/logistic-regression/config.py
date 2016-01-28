@@ -8,7 +8,7 @@
 # US West (Oregon) Region
 EC2_LOCATION                    = 'us-west-2'
 UBUNTU_AMI                      = 'ami-fa9cf1ca'
-NAIAD_AMI                       = 'ami-10b1ab71'
+NAIAD_AMI                       = 'ami-80e80fe0'
 KEY_NAME                        = 'omidm-sing-key-pair-us-west-2'
 SECURITY_GROUP                  = 'nimbus_sg_uswest2'
 WORKER_INSTANCE_TYPE            = 'c3.2xlarge'
@@ -28,7 +28,7 @@ WORKER_INSTANCE_NUM             = 25
 WORKER_PER_INSTANCE             = 1
 WORKER_THREAD_NUM               = 8
 DIMENSION                       = 10
-ITERATION_NUM                   = 20
+ITERATION_NUM                   = 30
 PARTITION_NUM                   = 2000
 SAMPLE_NUM_M                    = 100
 SPIN_WAIT_US                    = 0
