@@ -7,7 +7,8 @@ This README file is prepared to give directives on installing and running Naiad
 on Ubuntu. It is tested on Ubuntu 12.04 but the process should work for later
 versions of the Ubuntu as well. To run C# with in the Microsoft's .NET
 framework on Ubuntu you need to use Mono. In the following, you will find
-instructions on installing Mono as well.
+instructions on installing Mono as well. There is also information on how to
+profile programs running under Mono.
 
 The "extended" directory, has additional instructions and examples added by
 me to show how to write and run customized Naiad programs, as well as running
@@ -86,4 +87,44 @@ tested. To get the older version through apt-get use following commands:
 However, if you install the older versio, you need to first completely remove
 it before installing the newer version as instructed above!
 
+
+-------------------------------------------------------------------------------
+How to profile programs running under Mono
+-------------------------------------------------------------------------------
+
+Refer to the website: http://www.mono-project.com/docs/debug+profile/profile/profiler/
+
+The simpler way to use the profiler is the following:
+
+    $ mono --profile=log program.exe
+
+At the end of the execution the file output.mlpd will be found in the current
+directory. A summary report of the data can be printed by running:
+
+    $ mprof-report output.mlpd
+
+With this invocation a huge amount of data is collected about the program
+execution and collecting and saving this data can significantly slow down
+program execution. If saving the profiling data is not needed, a report can be
+generated directly with:
+
+    $ mono --profile=log:report Example.exe
+
+If the information about allocations is not of interest, it can be excluded:
+
+    $ mono --profile=log:noalloc program.exe
+
+There are other options that you can provide buy looking at the reference. You
+can porovide multiple comma separated options. For example the dault call with
+no options is equivalent to:
+
+    > --profile=log:calls,alloc,output=output.mlpd,maxframes=8,calldepth=100
+
+
+the dumped, statisics could be long, you can pipe it to  file and search for
+following main tags:
+
+    "Allocation summary"
+    "Method call summary"
+    "Counters"
 
