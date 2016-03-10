@@ -1,5 +1,6 @@
 
 using System;
+using System.Linq;
 using System.Diagnostics;
 using System.Collections.Generic;
 
@@ -75,13 +76,16 @@ public class Gradient
     Console.Out.WriteLine("Generating samples(ms): {0:F2} ", 1000 * elapsed);
 
 
+    List<double> elapsed_list = new List<double>();
     for (int i = 0; i < g.iteration_num_; ++i) {
       stamp = Stopwatch.GetTimestamp();
       g.Advance();
       elapsed = (double)(Stopwatch.GetTimestamp() - stamp) / (double)(Stopwatch.Frequency);
       Console.Out.WriteLine("Iteration {0:D2} elapsed(ms): {1:F2} ", i, 1000 * elapsed);
-
+      elapsed_list.Add(1000 * elapsed);
     }
+    Console.Out.WriteLine("Average gradient computation for {0:D2} iterations(ms): {1:F2} ",
+        g.iteration_num_, elapsed_list.Average(x => x));
   }
 
   private void Advance() {
