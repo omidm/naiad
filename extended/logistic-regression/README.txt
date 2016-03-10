@@ -16,21 +16,22 @@ Usage:
                          <partition_num>
                          <sample_num in million>
                          <worker_num>
+                         <spin_wait in us>
+
+If spin_wait is not zero the gradient phase is replaced by an exact busy loop.
 
 To run N, T-threaded workers locally, luanch workers using the following command
 where PID is replaced by a unique integer from 0 to N-1 for each worker.
 
     $ mono LogisticRegression.exe -n N --local -p PID -t T --inlineserializer <lr-arguments>
 
-
-To compile:
-    $ make
-
-To run an example over single node:
-    $ make run
-
-To run an example over two nodes on your local machine:
-    $ make run-dist
+Makefile options:
+    $ make             to compile
+    $ make run         to run an example over single node
+    $ make run-dist    to run an example over two nodes on your local machine
+    $ make run-spin    to run an example over single node and replace the
+                       gradient operation with an spin wait
+    $ make clean       to clean generated binary
 
 Default make is for Release mode, you can add "debug" prefix to generate the
 Debug mode, e.g. "make debug" or "make debug-run"
