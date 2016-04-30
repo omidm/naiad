@@ -44,6 +44,24 @@ It has README and Makefile file on how to compile and run the code.
     <>parent-dir>/Examples/GraphLINQ/PageRank.cs
 
 
+-------------------------------------------------------------------------------
+How to activate assertions in mono Mono
+-------------------------------------------------------------------------------
+
+1. Debug.Assert is annotated with [ConditionalAttribute("DEBUG")]. This means
+that all invocations are removed by the compiler unless the DEBUG preprocessor
+symbol is defined. So while compiling with dmcs also pass the -d:DEBUG option.
+
+    $ dmcs -d:DEBUG <program>.cs ...
+
+2. Mono does not show a dialog box like Microsoft's .NET implementation when an
+assertion is hit. You need to set a TraceListener, e.g.
+
+    $ export MONO_TRACE_LISTENER=Console.Error
+    $ mono <program>.exe
+
+3. For an example, refer to the Makefile in k-means.
+
 
 -------------------------------------------------------------------------------
 How to run Naiad in distributed mode

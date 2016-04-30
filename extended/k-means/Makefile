@@ -1,11 +1,11 @@
 
 NAIAD_ROOT = ../..
-SOURCE = LogisticRegression.cs
+SOURCE = KMeans.cs
 
 default: release
 
 
-TARGET_R         = Release/LogisticRegression.exe
+TARGET_R         = Release/KMeans.exe
 MONO_BUILD_R     =
 BUILD_DIR_R      = Release/
 NAIAD_LIB_R      = Release/Microsoft.Research.Naiad.dll
@@ -30,19 +30,19 @@ $(TARGET_R): $(SOURCE) $(NAIAD_LIB_R) $(LINDI_LIB_R) $(GLINQ_LIB_R)
 	dmcs $(MONO_BUILD_R) -out:$(TARGET_R) $(SOURCE) /reference:$(NAIAD_LIB_R) /reference:$(LINDI_LIB_R) /reference:$(GLINQ_LIB_R)
 
 run: release
-	cd $(BUILD_DIR_R); mono LogisticRegression.exe -t 2 10 10 4 1 1 0
+	cd $(BUILD_DIR_R); mono KMeans.exe -t 2 10 2 15 4 1 1 0
 
 run-spin: release
-	cd $(BUILD_DIR_R); mono LogisticRegression.exe -t 2 10 10 4 1 1 5000
+	cd $(BUILD_DIR_R); mono KMeans.exe -t 2 10 2 15 4 1 1 5000
 
 run-dist: release
-	cd $(BUILD_DIR_R); xterm -hold -e mono LogisticRegression.exe -n 2 --local -p 0 -t 2 --inlineserializer 10 10 8 1 2 0 &
+	cd $(BUILD_DIR_R); xterm -hold -e mono KMeans.exe -n 2 --local -p 0 -t 2 --inlineserializer 10 2 15 8 1 2 0 &
 	sleep 1
-	cd $(BUILD_DIR_R); xterm -hold -e mono LogisticRegression.exe -n 2 --local -p 1 -t 2 --inlineserializer 10 10 8 1 2 0
+	cd $(BUILD_DIR_R); xterm -hold -e mono KMeans.exe -n 2 --local -p 1 -t 2 --inlineserializer 10 2 15 8 1 2 0
 
 
 
-TARGET_D         = Debug/LogisticRegression.exe
+TARGET_D         = Debug/KMeans.exe
 MONO_BUILD_D     = -debug -d:DEBUG
 BUILD_DIR_D      = Debug/
 NAIAD_LIB_D      = Debug/Microsoft.Research.Naiad.dll
@@ -67,15 +67,15 @@ $(TARGET_D): $(SOURCE) $(NAIAD_LIB_D) $(LINDI_LIB_D) $(GLINQ_LIB_D)
 	dmcs $(MONO_BUILD_D) -out:$(TARGET_D) $(SOURCE) /reference:$(NAIAD_LIB_D) /reference:$(LINDI_LIB_D) /reference:$(GLINQ_LIB_D)
 
 debug-run: debug
-	export MONO_TRACE_LISTENER=Console.Error; cd $(BUILD_DIR_D); mono --debug LogisticRegression.exe -t 2 10 10 4 1 1 0
+	export MONO_TRACE_LISTENER=Console.Error; cd $(BUILD_DIR_D); mono --debug KMeans.exe -t 2 10 2 15 4 1 1 0
 
 debug-run-spin: debug
-	cd $(BUILD_DIR_D); mono --debug LogisticRegression.exe -t 2 10 10 4 1 1 5000
+	cd $(BUILD_DIR_D); mono --debug KMeans.exe -t 2 10 2 15 4 1 1 5000
 
 debug-run-dist: debug
-	cd $(BUILD_DIR_D); xterm -hold -e mono --debug LogisticRegression.exe -n 2 --local -p 0 -t 2 --inlineserializer 10 10 8 1 2 0 &
+	cd $(BUILD_DIR_D); xterm -hold -e mono --debug KMeans.exe -n 2 --local -p 0 -t 2 --inlineserializer 10 2 15 8 1 2 0 &
 	sleep 1
-	cd $(BUILD_DIR_D); xterm -hold -e mono --debug LogisticRegression.exe -n 2 --local -p 1 -t 2 --inlineserializer 10 10 8 1 2 0
+	cd $(BUILD_DIR_D); xterm -hold -e mono --debug KMeans.exe -n 2 --local -p 1 -t 2 --inlineserializer 10 2 15 8 1 2 0
 
 
 clean:
