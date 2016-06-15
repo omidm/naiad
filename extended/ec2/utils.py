@@ -31,10 +31,29 @@ LR_APP_OPTIONS     += ' ' + str(config.SAMPLE_NUM_M)
 LR_APP_OPTIONS     += ' ' + str(config.WORKER_INSTANCE_NUM * config.WORKER_PER_INSTANCE)
 LR_APP_OPTIONS     += ' ' + str(config.SPIN_WAIT_US)
 
+
+KM_REL_WORKER_PATH  = 'extended/k-means/Release/'
+KM_WORKER_EXE       = 'KMeans.exe'
+KM_APP_OPTIONS      = ' '
+KM_APP_OPTIONS     += ' ' + str(config.DIMENSION)
+KM_APP_OPTIONS     += ' ' + str(config.CLUSTER_NUM)
+KM_APP_OPTIONS     += ' ' + str(config.ITERATION_NUM)
+KM_APP_OPTIONS     += ' ' + str(config.PARTITION_NUM)
+KM_APP_OPTIONS     += ' ' + str(config.SAMPLE_NUM_M)
+KM_APP_OPTIONS     += ' ' + str(config.WORKER_INSTANCE_NUM * config.WORKER_PER_INSTANCE)
+KM_APP_OPTIONS     += ' ' + str(config.SPIN_WAIT_US)
+
+
+
+
 if (config.APPLICATION == 'lr'):
   REL_WORKER_PATH = LR_REL_WORKER_PATH
   WORKER_EXE      = LR_WORKER_EXE
   APP_OPTIONS     = LR_APP_OPTIONS
+elif (config.APPLICATION == 'k-means'):
+  REL_WORKER_PATH = KM_REL_WORKER_PATH
+  WORKER_EXE      = KM_WORKER_EXE
+  APP_OPTIONS     = KM_APP_OPTIONS
 else:
   print "ERROR: Unknown application: " + config.APPLICATION
   exit(0)

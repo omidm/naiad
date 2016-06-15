@@ -15,22 +15,23 @@ WORKER_INSTANCE_TYPE            = 'c3.2xlarge'
 PLACEMENT                       = 'us-west-2c' # None
 PLACEMENT_GROUP                 = 'nimbus-cluster' # None
 PRIVATE_KEY                     = '/home/omidm/.ssh/' + KEY_NAME + '.pem'
-WORKER_INSTANCE_NUM             = 25
+WORKER_INSTANCE_NUM             = 100
 
 # Naiad configurations
 WORKER_PER_INSTANCE             = 1
 WORKER_THREAD_NUM               = 8
-APPLICATION                     = 'lr' # 'stencil-1d' 'k-means'
+APPLICATION                     = 'k-means' # 'lr' 'stencil-1d' 'k-means'
 FIRST_PORT                      = 5800
 RUN_WITH_TASKSET                = False
 WORKER_TASKSET                  = '0-1,4-5' # '0-3,8-11'
 
 # Simulation configurations
-# lr
+# lr and k-means
 DIMENSION                       = 10
+CLUSTER_NUM                     = 2
 ITERATION_NUM                   = 30
-PARTITION_NUM                   = 2000
-SAMPLE_NUM_M                    = 100
+PARTITION_NUM                   = 8000
+SAMPLE_NUM_M                    = 544
 SPIN_WAIT_US                    = 0
 
 
