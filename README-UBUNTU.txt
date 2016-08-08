@@ -13,6 +13,7 @@ profile programs running under Mono.
 The "extended" directory, has additional instructions and examples added by
 me to show how to write and run customized Naiad programs, as well as running
 the distributed version of the program on multiple nodes (e.g. EC2 nodes).
+There is also notes on how to debug and log Naiad.
 
 
 -------------------------------------------------------------------------------

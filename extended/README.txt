@@ -95,3 +95,25 @@ Example of running logistic regression program over two local nodes:
     $ mono LogisticRegression.exe -n 2 --local -p 0 --inlineserializer <logistic-regression-args>
     $ mono LogisticRegression.exe -n 2 --local -p 1 --inlineserializer <logistic-regression-args>
 
+
+
+-------------------------------------------------------------------------------
+How to activate Naiad logging
+-------------------------------------------------------------------------------
+
+To activate all logging levels in Naiad, change the following line in the
+file "Naiad/Logging.cs":
+
+     -        private static LoggingLevel logLevel = LoggingLevel.Error;
+     +        private static LoggingLevel logLevel = LoggingLevel.Debug;
+
+Look in to this file to find other options for different logging level. You
+need to recompile the Naiad library, make clean, and rebuild the applications.
+Note that the make clean for the applications is necessary.
+
+You can also add logging directives any other place you want. For example to
+chase down the runtime overhead for the OSDI'16 rebuttal I change the sources a
+reflected in "rebuttal-debug.diff". Again, don't forget to rebuild the Naiad
+library, make clean the application and rebuilding the applications.
+
+

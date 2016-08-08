@@ -1,0 +1,215 @@
+diff --git a/src/naiad/Naiad/Dataflow/Input.cs b/src/naiad/Naiad/Dataflow/Input.cs
+index 83b9448..7b8ee7f 100644
+--- a/src/naiad/Naiad/Dataflow/Input.cs
++++ b/src/naiad/Naiad/Dataflow/Input.cs
+@@ -272,6 +272,7 @@ namespace Microsoft.Research.Naiad.Dataflow
+ 
+         internal override void PerformAction(Scheduling.Scheduler.WorkItem workItem)
+         {
++		Logging.Info("INPUT 1 ***************** OMID");
+             var epoch = new Epoch().InitializeFrom(workItem.Requirement, 1).epoch;
+ 
+             for (int i = nextSendEpoch; i <= epoch; i++)
+@@ -444,6 +445,7 @@ namespace Microsoft.Research.Naiad.Dataflow
+ 
+         internal override void PerformAction(Scheduling.Scheduler.WorkItem workItem)
+         {
++		Logging.Info("INPUT 2 ***************** OMID");
+             var epoch = new Epoch().InitializeFrom(workItem.Requirement, 1).epoch;
+ 
+             Instruction nextInstruction;
+diff --git a/src/naiad/Naiad/Dataflow/Vertex.cs b/src/naiad/Naiad/Dataflow/Vertex.cs
+index 36f7ec3..83dc6e3 100644
+--- a/src/naiad/Naiad/Dataflow/Vertex.cs
++++ b/src/naiad/Naiad/Dataflow/Vertex.cs
+@@ -306,24 +306,34 @@ namespace Microsoft.Research.Naiad.Dataflow
+ 
+         internal override void PerformAction(Scheduling.Scheduler.WorkItem workItem)
+         {
++		Logging.Info("VERTEX ***************** BEGIN");
+             if (this.IsShutDown)
+                 Console.Error.WriteLine("Scheduling {0} at {1} but already shut down", this, workItem);
+             else
+             {
++		Logging.Info("VERTEX 1 ***************** BEGIN");
+                 var time = default(TTime).InitializeFrom(workItem.Requirement, workItem.Requirement.Timestamp.Length);
+ 
++		Logging.Info("VERTEX 2 ***************** BEGIN");
+                 OutstandingResumes.Remove(time);
+ 
++		Logging.Info("VERTEX 3 ***************** BEGIN");
+                 progressBuffer.Update(time, -1);
+ 
++		Logging.Info("VERTEX 4 ***************** BEGIN");
+                 this.Entrancy = this.Entrancy - 1;
+ 
++		Logging.Info("VERTEX 5 ***************** BEGIN");
+                 this.OnNotify(time);
+ 
++		Logging.Info("VERTEX 6 ***************** BEGIN");
+                 this.Entrancy = this.Entrancy + 1;
+ 
++		Logging.Info("VERTEX 7 ***************** BEGIN");
+                 this.Flush();
+             }
++		Logging.Info("VERTEX CLASS NAME: " + this.GetType().Name);
++		Logging.Info("VERTEX 8 ***************** END");
+         }
+ 
+         /// <summary>
+diff --git a/src/naiad/Naiad/Frameworks/StandardVertices.cs b/src/naiad/Naiad/Frameworks/StandardVertices.cs
+index ebc0a57..de65df3 100644
+--- a/src/naiad/Naiad/Frameworks/StandardVertices.cs
++++ b/src/naiad/Naiad/Frameworks/StandardVertices.cs
+@@ -30,6 +30,7 @@ using Microsoft.Research.Naiad.DataStructures;
+ 
+ using Microsoft.Research.Naiad.Dataflow;
+ using Microsoft.Research.Naiad.Scheduling;
++using Microsoft.Research.Naiad.Diagnostics;
+ 
+ namespace Microsoft.Research.Naiad.Dataflow
+ {
+@@ -244,10 +245,13 @@ namespace Microsoft.Research.Naiad.Dataflow
+         /// </summary>
+         public void Flush()
+         {
++		// Logging.Info("************** Vertex FLUSH BEGIN");
+             if (this.Buffers.Count > 0)
+             {
++		int _count = 0;
+                 while (this.Buffers.Count > 0)
+                 {
++		    _count += 1;
+                     var key = this.Buffers.Keys.First();
+ 
+                     var buffer = this.Buffers[key];
+@@ -255,6 +259,7 @@ namespace Microsoft.Research.Naiad.Dataflow
+ 
+                     buffer.SendBuffer();
+                 }
++		// Logging.Info("************** Vertex FLUSH MIDDLE with count {0}", _count);
+             }
+ 
+             if (this.MustFlushChannels)
+@@ -263,6 +268,7 @@ namespace Microsoft.Research.Naiad.Dataflow
+                 for (int i = 0; i < this.sendChannels.Length; i++)
+                     this.sendChannels[i].Flush();
+             }
++		// Logging.Info("************** Vertex FLUSH END with count {0}", this.sendChannels.Length);
+         }
+ 
+         /// <summary>
+@@ -588,7 +594,9 @@ namespace Microsoft.Research.Naiad.Dataflow.StandardVertices
+         /// <param name="message">The message.</param>
+         public override void OnReceive(Message<TInput, TTime> message)
+         {
++	    Logging.Info("************** UnaryBufferingVertex ONRECEIVE BEGIN");
+             this.Input.OnReceive(message, new ReturnAddress());
++	    Logging.Info("************** UnaryBufferingVertex ONRECEIVE END");
+         }
+ 
+         /// <summary>
+@@ -597,10 +605,13 @@ namespace Microsoft.Research.Naiad.Dataflow.StandardVertices
+         /// <param name="time">The timestamp of the notification.</param>
+         public override void OnNotify(TTime time)
+         {
++	    Logging.Info("************** UnaryBufferingVertex ONNOTIFY BEGIN");
+             var records = this.Input.GetRecordsAt(time);
+             var output = this.Output.GetBufferForTime(time);
++	    Logging.Info("************** UnaryBufferingVertex ONNOTIFY records count: {0}", this.Transformation(records).Count());
+             foreach (var result in this.Transformation(records))
+                 output.Send(result);
++	    Logging.Info("************** UnaryBufferingVertex ONNOTIFY END");
+         }
+ 
+         /// <summary>
+diff --git a/src/naiad/Naiad/Logging.cs b/src/naiad/Naiad/Logging.cs
+index 9f2f989..deeb36f 100644
+--- a/src/naiad/Naiad/Logging.cs
++++ b/src/naiad/Naiad/Logging.cs
+@@ -117,7 +117,7 @@ namespace Microsoft.Research.Naiad.Diagnostics
+             }
+         }
+ 
+-        private static LoggingLevel logLevel = LoggingLevel.Error;
++        private static LoggingLevel logLevel = LoggingLevel.Debug;
+ 
+         /// <summary>
+         /// Gets and sets logging level.
+diff --git a/src/naiad/Naiad/Runtime/Networking/Networking.cs b/src/naiad/Naiad/Runtime/Networking/Networking.cs
+index 3ad3326..b4a1c01 100644
+--- a/src/naiad/Naiad/Runtime/Networking/Networking.cs
++++ b/src/naiad/Naiad/Runtime/Networking/Networking.cs
+@@ -859,6 +859,8 @@ namespace Microsoft.Research.Naiad.Runtime.Networking
+                     seg.Dispose();
+                 }
+ 
++		Logging.Progress("Sent {0} bytes to {1}", length, destProcessID);
++
+                 if (shuttingDown)
+                     break;
+                 if (length == 0)
+@@ -940,6 +942,7 @@ namespace Microsoft.Research.Naiad.Runtime.Networking
+                 recvBytesIn += recvSegment.Count;
+ 
+                 int bytesRecvd = socket.Receive(recvSegment.Array, recvSegment.Offset, recvSegment.Count, SocketFlags.None, out errorCode);
++		Logging.Info("PerProcessRecvThread[{0}]: Bytes {1} ", srcProcessID, bytesRecvd);
+                 
+                 // If the remote host shuts down the Socket connection with the Shutdown method,
+                 // and all available data has been received, the Receive method will complete 
+@@ -1027,6 +1030,7 @@ namespace Microsoft.Research.Naiad.Runtime.Networking
+ 
+         private bool AttemptDelivery(SerializedMessage message, int peerID = -1)
+         {
++	    Logging.Info("ATTEMP DELIVERY for Thread[{0}]", peerID);
+             int graphId = message.Header.ChannelID >> 16;
+             int channelId = message.Header.ChannelID & 0xFFFF;                    
+ 
+diff --git a/src/naiad/Naiad/Runtime/Progress/UpdateAggregator.cs b/src/naiad/Naiad/Runtime/Progress/UpdateAggregator.cs
+index fabdf9f..ce1434b 100644
+--- a/src/naiad/Naiad/Runtime/Progress/UpdateAggregator.cs
++++ b/src/naiad/Naiad/Runtime/Progress/UpdateAggregator.cs
+@@ -42,6 +42,7 @@ namespace Microsoft.Research.Naiad.Runtime.Progress
+ 
+         internal override void PerformAction(Scheduler.WorkItem workItem)
+         {
++		Logging.Info("AGGREGATOR ***************** OMID");
+             this.ConsiderFlushingBufferedUpdates();
+         }
+         
+@@ -165,4 +166,4 @@ namespace Microsoft.Research.Naiad.Runtime.Progress
+             this.Output = new VertexOutputBuffer<Update, Empty>(this);
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/naiad/extended/k-means/KMeans.cs b/src/naiad/extended/k-means/KMeans.cs
+index eb1ab2a..dba9b7f 100644
+--- a/src/naiad/extended/k-means/KMeans.cs
++++ b/src/naiad/extended/k-means/KMeans.cs
+@@ -16,6 +16,8 @@ using Sample = System.Collections.Generic.List<double>;
+ using Mean = System.Collections.Generic.List<double>;
+ using Means = System.Collections.Generic.List<System.Collections.Generic.List<double>>;
+ 
++using Microsoft.Research.Naiad.Diagnostics;
++
+ public class KMeans
+ {
+   // properties for implementing the logic of the application.
+@@ -281,6 +283,7 @@ public class KMeans
+   }
+ 
+   private List<Means> Reduction(int k, IEnumerable<Means> list) {
++	  Logging.Info("Start Reduction ");
+     int count = 0;
+ 
+     Means reduced = new Means();
+@@ -323,6 +326,7 @@ public class KMeans
+       }
+       out_list.Add(synch);
+     }
++	  Logging.Info("End Reduction ");
+     return out_list;
+ 
+   }
