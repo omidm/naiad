@@ -13,74 +13,97 @@ using Microsoft.Research.Naiad.Dataflow.Iteration;
 using Microsoft.Research.Naiad.Dataflow.PartitionBy;
 
 using Sample = System.Collections.Generic.List<double>;
+using SampleBatch = System.Collections.Generic.List<System.Collections.Generic.List<double>>;
 using Weight = System.Collections.Generic.List<double>;
 
 
 public class LogisticRegression
 {
-  // properties for implementing the logic of the application.
-  public Int32 procid_;
+  // application properties.
   public Int32 dimension_;
   public Int32 iteration_num_;
-  public Int64 partition_num_;
+  public Int32 partition_num_;
   public double sample_num_m_;
-  // workers could be multiple threaded handling more than one core.
-  public Int64 worker_num_;
-  public Int64 snpw_; // sample_num_per_worker_;
-  public Int64 pnpw_; // partition_num_per_worker_
   public Int64 spin_wait_;
+
+  // naiad properties
+  public Int32 procid_;
+  public Int32 worker_num_;
+  public Int32 thread_num_;
+
+  // secondary helper properties
+  public Int64 pnpw_; // partition_num_per_worker_
+  public Int64 snpp_; // sample_num_per_partition_;
+
+  // properties for implementing the logic of application
   public Weight weight_;
 
-  // multi-threaded worker need synchronization
+  // multi-threaded worker needs synchronization
   private Object lock_ = new Object();
 
   // properties for monitoring and profiling the progress.
-  public int p_counter_;
   public int loop_index_;
-  public double gradient_elapsed_;
-  public long loop_stamp_;
-  public long gradient_stamp_;
-  public List<int> counter_1_;
-  public List<int> counter_2_;
-  public List<int> counter_3_;
+  public int loop_marker_;
 
-  LogisticRegression (Int32 procid,
-                      Int32 dimension,
+  public long loop_time_stamp_;
+  public List<double> compute_times_;
+
+  public List<int> sample_counter;
+  public List<int> sync_l1_counter_;
+  public List<int> sync_l2_counter_;
+  public List<int> reduce_l1_counter_;
+  public List<int> reduce_l2_counter_;
+
+  public HashSet<int> sync_tags_;
+  public HashSet<int> reduce_tags_;
+  public HashSet<int> gradient_tags_;
+
+  LogisticRegression (Int32 dimension,
                       Int32 iteration_num,
-                      Int64 partition_num,
+                      Int32 partition_num,
                       double sample_num_m,
-                      Int64 worker_num,
-                      Int64 spin_wait) {
-    procid_ = procid;
+                      Int64 spin_wait,
+                      Int32 procid,
+                      Int32 worker_num,
+                      Int32 thread_num) {
     dimension_ = dimension;
     iteration_num_ = iteration_num;
     partition_num_ = partition_num;
     sample_num_m_ = sample_num_m;
-    worker_num_ = worker_num;
     spin_wait_ = spin_wait;
+    procid_ = procid;
+    worker_num_ = worker_num;
+    thread_num_ = thread_num;
 
-    if (partition_num_ % worker_num_ != 0) {
-      throw new Exception("partition number is not divisible by worker number!");
+    if (partition_num_ % (worker_num_ * thread_num) != 0) {
+      throw new Exception("partition number is not divisible by core number!");
     }
-    if ((Int64)(sample_num_m_ * 1e6) % partition_num_ != 0) {
+    if ((Int64)(sample_num_m_ * 1e6) % (Int64)(partition_num_) != 0) {
       throw new Exception("sample number is not divisible by partition number!");
     }
-    snpw_ = (Int64)(sample_num_m_ * 1e6) / worker_num_;
     pnpw_ = partition_num_ / worker_num_;
+    snpp_ = (Int64)(sample_num_m_ * 1e6) / partition_num_;
 
     weight_ = new Weight();
     for (int j = 0; j < dimension; j++) {
       weight_.Add(1);
     }
 
-    p_counter_ = 0;
     loop_index_ = 0;
-    gradient_elapsed_ = 0;
-    loop_stamp_ = Stopwatch.GetTimestamp();
-    gradient_stamp_ = Stopwatch.GetTimestamp();
-    counter_1_ = new List<int>();
-    counter_2_ = new List<int>();
-    counter_3_ = new List<int>();
+    loop_marker_ = 0;
+
+    compute_times_ = new List<double>();
+    loop_time_stamp_ = Stopwatch.GetTimestamp();
+
+    sample_counter = new List<int>();
+    sync_l1_counter_ = new List<int>();
+    sync_l2_counter_ = new List<int>();
+    reduce_l1_counter_ = new List<int>();
+    reduce_l2_counter_ = new List<int>();
+
+    sync_tags_ = new HashSet<int>();
+    reduce_tags_ = new HashSet<int>();
+    gradient_tags_ = new HashSet<int>();
   }
 
   static void PrintHelp() {
@@ -89,17 +112,16 @@ public class LogisticRegression
     str += "\n                         <iteration_num>";
     str += "\n                         <partition_num>";
     str += "\n                         <sample_num in million>";
-    str += "\n                         <worker_num>";
     str += "\n                         <spin_wait in micro seconds>";
     str += "\n\nNotes:";
     str += "\n  if spin_wait is not zero the gradient phase is replaced by an exact busy loop.";
-    str += "\n  naiad -n option should be worker_num";
-    str += "\n  naiad -p option should be intergers from 0 to (worker_num-1)";
-    str += "\n  naiad -t option is better to be the number of cores at worker";
-    str += "\n  use --inlineserializer option in the distributed mode";
+    str += "\n  naiad -n option is the number of workers.";
+    str += "\n  naiad -t option is better to be the number of cores at worker.";
+    str += "\n  naiad -p option should be intergers from 0 to (<worker_num> - 1).";
+    str += "\n  use --inlineserializer option in the distributed mode.";
     str += "\n\nExample of running two local nodes:";
-    str += "\n   mono LogisticRegression.exe -n 2 --local -p 0 -t 2 --inlineserializer 10 15 4 1 2 0";
-    str += "\n   mono LogisticRegression.exe -n 2 --local -p 1 -t 2 --inlineserializer 10 15 4 1 2 0";
+    str += "\n   mono LogisticRegression.exe -n 2 --local -p 0 -t 2 --inlineserializer 10 15 4 1 0";
+    str += "\n   mono LogisticRegression.exe -n 2 --local -p 1 -t 2 --inlineserializer 10 15 4 1 0";
     str += "\n";
     Console.Out.WriteLine(str);
     Console.Out.Flush();
@@ -111,46 +133,44 @@ public class LogisticRegression
     using (var computation = NewComputation.FromArgs(ref args))
     {
 
-      if (args.Length != 6) {
+      if (args.Length != 5) {
         PrintHelp();
         return;
       }
 
+      Int32 procid     = computation.Configuration.ProcessID;
+      Int32 thread_num = computation.Configuration.WorkerCount;
+      Int32 worker_num = computation.Configuration.Processes;
 
-      Int32 procid = computation.Configuration.ProcessID;
-      Int32 dimension = Int32.Parse(args[0]);
+      Int32 dimension     = Int32.Parse(args[0]);
       Int32 iteration_num = Int32.Parse(args[1]);
-      Int64 partition_num = Int32.Parse(args[2]);
+      Int32 partition_num = Int32.Parse(args[2]);
       double sample_num_m = Convert.ToDouble(args[3]);
-      Int64 worker_num = Int64.Parse(args[4]);
-      Int64 spin_wait = Int64.Parse(args[5]);
+      Int64 spin_wait     = Int64.Parse(args[4]);
 
-      Console.Out.WriteLine("procid: " + procid);
       Console.Out.WriteLine("dimension: " + dimension);
       Console.Out.WriteLine("iteration_num: " + iteration_num);
       Console.Out.WriteLine("partition_num: " + partition_num);
       Console.Out.WriteLine("sample_num_m: " + sample_num_m);
-      Console.Out.WriteLine("worker_num: " + worker_num);
       Console.Out.WriteLine("spin_wait: " + spin_wait);
+      Console.Out.WriteLine("procid: " + procid);
+      Console.Out.WriteLine("worker_num: " + worker_num);
+      Console.Out.WriteLine("thread_num: " + thread_num);
       Console.Out.Flush();
 
       LogisticRegression lr =
-        new LogisticRegression(procid,
-                               dimension,
+        new LogisticRegression(dimension,
                                iteration_num,
                                partition_num,
                                sample_num_m,
+                               spin_wait,
+                               procid,
                                worker_num,
-                               spin_wait);
+                               thread_num);
 
-      Stream<Sample, Epoch> samples = lr.GenerateSamples().AsNaiadStream(computation);
-
-      // partition the samples based on the first element.
-      samples = samples.PartitionBy(s => (int)(s[0]));
-
-
+      Stream<SampleBatch, Epoch> samples = lr.GenerateSamples().AsNaiadStream(computation);
+      samples = samples.PartitionBy(s => (int)(s[0][0]));
       var end_samples  = samples.Iterate((lc , s) => lr.Advance(s), iteration_num, "LogisticRegression");
-
       // var output = end_samples.Subscribe(x => {
       //                                           Console.Out.WriteLine("Final weight: " + PrintList(lr.weight_));
       //                                           Console.Out.Flush();
@@ -158,66 +178,74 @@ public class LogisticRegression
 
       Console.Out.WriteLine("Before Activate!");
       Console.Out.Flush();
-  
       // start the computation, fixing the structure of the dataflow graph.
       computation.Activate();
-
       Console.Out.WriteLine("After Activate!");
       Console.Out.Flush();
   
       // block until all work is finished.
       computation.Join();
-
       Console.Out.WriteLine("After Join!");
-      Console.Out.WriteLine("Final weight: " + PrintList(lr.weight_));
-      Console.Out.WriteLine("Counter 1 from procid: " + lr.procid_ + " " +  PrintList(lr.counter_1_));
-      Console.Out.WriteLine("Counter 2 from procid: " + lr.procid_ + " " +  PrintList(lr.counter_2_));
-      Console.Out.WriteLine("Counter 3 from procid: " + lr.procid_ + " " +  PrintList(lr.counter_3_));
+
+      Console.Out.WriteLine("Final Weight: " + PrintList(lr.weight_));
+      Console.Out.WriteLine("Samples Counts: " +  PrintList(lr.sample_counter));
+      Console.Out.WriteLine("Reduce Level 1 Counts: " + PrintList(lr.reduce_l1_counter_));
+      Console.Out.WriteLine("Reduce Level 2 Counts: " + PrintList(lr.reduce_l2_counter_));
+      Console.Out.WriteLine("Sync Level 1 Counts: " +  PrintList(lr.sync_l1_counter_));
+      Console.Out.WriteLine("Sync Level 2 Counts: " +  PrintList(lr.sync_l2_counter_));
+      Console.Out.WriteLine("Sync Tags: " + PrintHashSet(lr.sync_tags_));
+      Console.Out.WriteLine("Reduce Tags: " + PrintHashSet(lr.reduce_tags_));
+      Console.Out.WriteLine("Gradient Tags: " + PrintHashSet(lr.gradient_tags_));
       Console.Out.Flush();
     }
   }
 
-  public Stream<Sample, IterationIn<Epoch>> Advance(Stream<Sample, IterationIn<Epoch>> samples)
+  public Stream<SampleBatch, IterationIn<Epoch>> Advance(Stream<SampleBatch, IterationIn<Epoch>> samples)
   {
     Console.Out.WriteLine("**Begin Advance**");
     Console.Out.Flush();
 
+    var per_core_reduced =
+      samples.GroupBy(s => (int)(s[0][0]), (k, list) => Gradient(k, list));
 
-    var local_reduced =
-      samples.GroupBy(s => (int)(s[0]), (k, list) => Gradient(k, list));
+    var per_worker_reduced =
+      per_core_reduced.GroupBy(s => (int)(s[0]), (k, list) => ReductionLevel1(k, list));
 
     var global_reduced =
-      local_reduced.GroupBy(s => 0, (k, list) => Reduction(k, list));
+      per_worker_reduced.GroupBy(s => 0, (k, list) => ReductionLevel2(k, list));
+
+    var per_worker_synced =
+      global_reduced.GroupBy(s => (int)(s[0]), (k, list) => SyncLevel1(k, list));
 
     var next_samples =
-      global_reduced.CoGroupBy(samples,
+      per_worker_synced.CoGroupBy(samples,
                                s => (int)(s[0]),
-                               s => (int)(s[0]),
-                               (k, weights, new_samples) => Synch(k, weights, new_samples));
-
+                               s => (int)(s[0][0]),
+                               (k, weights, new_samples) => SyncLevel2(k, weights, new_samples));
     Console.Out.WriteLine("**End Advance**");
     Console.Out.Flush();
 
     return next_samples;
   }
 
-  private List<Sample> Gradient(int k, IEnumerable<Sample> list) {
+  private List<Weight> Gradient(int k, IEnumerable<SampleBatch> list) {
+    var start_time = Stopwatch.GetTimestamp();
     var w = new Weight();
     lock(lock_) {
       w = weight_;
-      if (p_counter_ == 0) {
-        gradient_stamp_ = Stopwatch.GetTimestamp();
-      }
+      gradient_tags_.Add(k);
     }
 
-    int count = 0;
+    int sample_count = 0;
     Weight reduced = new Weight(new double[dimension_]);
 
     if (spin_wait_ == 0) {
-      foreach (var s in list) {
-        var scale = (1 / (1 + Math.Exp(s[1] * VectorDot(s, 2, w, 0))) - 1) * s[1];
-        VectorAccWithScale(ref reduced, 0, s, 2, scale);
-        count++;
+      foreach (var sample_batch in list) {
+        foreach (var s in sample_batch) {
+          var scale = (1 / (1 + Math.Exp(s[1] * VectorDot(s, 2, w, 0))) - 1) * s[1];
+          VectorAccWithScale(ref reduced, 0, s, 2, scale);
+          sample_count++;
+        }
       }
     } else {
       bool first_loop = true;
@@ -237,81 +265,152 @@ public class LogisticRegression
     }
 
     lock(lock_) {
-      counter_1_.Add(count);
-      if (++p_counter_ == pnpw_) {
-        p_counter_ = 0;
-        gradient_elapsed_ = (double)(Stopwatch.GetTimestamp() - gradient_stamp_) / (double)(Stopwatch.Frequency);
-      }
+      sample_counter.Add(sample_count);
+      compute_times_.Add((double)(Stopwatch.GetTimestamp() - start_time) / (double)(Stopwatch.Frequency));
     }
 
-    var out_list = new List<Sample>();
-    out_list.Add(reduced);
+    var out_list = new List<Weight>();
+    {
+      var meta_reduced = new Weight();
+      // set the tag for the first level reduce
+      meta_reduced.Add(procid_ * thread_num_);
+      meta_reduced.AddRange(reduced);
+      out_list.Add(meta_reduced);
+    }
     return out_list;
   }
 
-  private List<Sample> Reduction(int k, IEnumerable<Sample> list) {
-    int count = 0;
+  private List<Weight> ReductionLevel1(int k, IEnumerable<Weight> list) {
+    int reduce_count = 0;
+    Weight reduced = new Weight(new double[dimension_]);
+    foreach (var weight in list) {
+      VectorAccWithScale(ref reduced, 0, weight, 1, 1);
+      reduce_count++;
+    }
+
+    lock(lock_) {
+      reduce_tags_.Add(k);
+      reduce_l1_counter_.Add(reduce_count);
+    }
+
+    var out_list = new List<Weight>();
+    {
+      out_list.Add(reduced);
+    }
+    return out_list;
+  }
+
+
+  private List<Weight> ReductionLevel2(int k, IEnumerable<Weight> list) {
+    int reduce_count = 0;
     Weight reduced = new Weight(new double[dimension_]);
     foreach (var weight in list) {
       VectorAccWithScale(ref reduced, 0, weight, 0, 1);
-      count++;
+      reduce_count++;
     }
 
     lock(lock_) {
-      counter_2_.Add(count);
+      reduce_l2_counter_.Add(reduce_count);
     }
 
-    var out_list = new List<Sample>();
-    for (int i = 0; i < partition_num_; ++i) {
-      var w = new Weight();
-      w.Add(i);
-      w.AddRange(reduced);
-      out_list.Add(w);
+    var out_list = new List<Weight>();
+    for (int i = 0; i < worker_num_; i++) {
+      var extended_reduced = new Weight();
+      // set the tag for the first level sync
+      extended_reduced.Add(i * thread_num_);
+      extended_reduced.AddRange(reduced);
+      out_list.Add(extended_reduced);
     }
     return out_list;
-
   }
 
-  private IEnumerable<Sample> Synch(int k, IEnumerable<Weight> weights, IEnumerable<Sample> samples) {
-    int count = 0;
-    foreach (var w in weights) {
-      lock(lock_) {
+
+  private IEnumerable<Weight> SyncLevel1(int k, IEnumerable<Weight> list) {
+    int sync_count = 0;
+    var reduced = new Weight();
+    foreach (var w in list) {
+      reduced = w;
+      sync_count++;
+    }
+
+    lock(lock_) {
+      sync_l1_counter_.Add(sync_count);
+    }
+
+    var out_list = new List<Weight>();
+    for (int i = 0; i < pnpw_; i++) {
+      var extended_reduced = new Weight();
+      var partition_id = worker_num_ * thread_num_ * (i / thread_num_) + procid_ * thread_num_ + (i % thread_num_);
+      // set the tag for the second level sync
+      extended_reduced.Add(partition_id);
+      extended_reduced.AddRange(reduced);
+      out_list.Add(extended_reduced);
+    }
+    return out_list;
+  }
+
+
+  private IEnumerable<SampleBatch> SyncLevel2(int k, IEnumerable<Weight> weights, IEnumerable<SampleBatch> samples) {
+    int sync_count = 0;
+    lock(lock_) {
+      foreach (var w in weights) {
         for (int i = 0; i < dimension_; ++i) {
           weight_[i] = w[i+1];
         }
+        sync_count++;
       }
-      count++;
     }
+
     lock(lock_) {
-      counter_3_.Add(count);
-      if (++p_counter_ == pnpw_) {
-        p_counter_ = 0;
+      sync_tags_.Add(k);
+      sync_l2_counter_.Add(sync_count);
+    }
+
+    lock(lock_) {
+      if (++loop_marker_ == pnpw_) {
         loop_index_++;
-        var elapsed = (double)(Stopwatch.GetTimestamp() - loop_stamp_) / (double)(Stopwatch.Frequency);
-        loop_stamp_ = Stopwatch.GetTimestamp();
-        Console.Out.WriteLine("Loop {0:D2} gradient(ms): {1:F2} total(ms): {2:F2} ",
-                              loop_index_, 1000 * gradient_elapsed_, 1000 * elapsed);
+        loop_marker_ = 0;
+
+        var elapsed = (double)(Stopwatch.GetTimestamp() - loop_time_stamp_) / (double)(Stopwatch.Frequency);
+        loop_time_stamp_ = Stopwatch.GetTimestamp();
+        double average = 0;
+        double max = compute_times_[0];
+        foreach (var e in compute_times_) {
+          average += e / pnpw_;
+          if (e > max) {
+            max = e;
+          }
+        }
+
+        compute_times_.Clear();
+        Console.Out.WriteLine("Loop {0:D2} gradient(ms): [avg: {1:F2}, max: {2:F2}] total(ms): {3:F2} {4:S}",
+                              loop_index_, 1000 * average, 1000 * max, 1000 * elapsed, PrintList(compute_times_));
         Console.Out.Flush();
       }
     }
+
     return samples;
   }
 
-  public IEnumerable<Sample> GenerateSamples() {
+
+  public IEnumerable<SampleBatch> GenerateSamples() {
     var random = new Random(procid_);
-    for (int i = 0; i < snpw_; i++) {
-      Sample sample = new Sample();
-      // the first element specifies the partition id.
-      sample.Add(pnpw_ * procid_ + (i % pnpw_));
+    for (int i = 0; i < pnpw_; i++) {
+      SampleBatch sample_batch = new SampleBatch();
+      var partition_id = worker_num_ * thread_num_ * (i / thread_num_) + procid_ * thread_num_ + (i % thread_num_);
+      for (int j = 0; j < snpp_; j++) {
+        Sample sample = new Sample();
+        // the first element specifies the partition id.
+        sample.Add(partition_id);
+        // the second element specifies the label +1/-1
+        sample.Add((2 * (j % 2)) - 1);
 
-      // the second element specifies the label +1/-1
-      sample.Add((2 * (i % 2)) - 1);
-
-      for (int j = 0; j < dimension_; j++) {
-        sample.Add(random.Next(133));
+        for (int k = 0; k < dimension_; k++) {
+          sample.Add(random.Next(133));
+        }
+        sample_batch.Add(sample);
       }
-
-      yield return sample;
+      yield return sample_batch;
     }
   }
 
@@ -336,16 +435,31 @@ public class LogisticRegression
   public static string PrintList<T>(List<T> list) {
     int length = list.Count;
     if (length == 0) {
-      return "{}";
+      return "[]";
     }
-    string str = "{";
+    string str = "[";
     for (int i = 0; i < length - 1; i++) {
       str += list[i];
       str += ", ";
     }
-    str += list[length - 1] + "}";
+    str += list[length - 1] + "]";
+    return str;
+  }
+
+  public static string PrintHashSet<T>(HashSet<T> set) {
+    int length = set.Count;
+    if (length == 0) {
+      return "{}";
+    }
+    string str = "{";
+    foreach (T i in set) {
+      str += i;
+      str += ", ";
+    }
+    str += "}";
     return str;
   }
 }
+
 
 
