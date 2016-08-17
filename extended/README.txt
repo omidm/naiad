@@ -90,11 +90,35 @@ To run multiprocess on one machine, specify -p, -n and --local for each process
 "--inlineserializer" options for non-primitive data types (e.g. List<float>).
 Naiad has a bug for serialization/deserialization when running under mono. 
 
+** NOTE: All naiad processes should have the same -t option, so that all of them
+have the same threads.
 
 Example of running logistic regression program over two local nodes: 
     $ mono LogisticRegression.exe -n 2 --local -p 0 --inlineserializer <logistic-regression-args>
     $ mono LogisticRegression.exe -n 2 --local -p 1 --inlineserializer <logistic-regression-args>
 
+
+-------------------------------------------------------------------------------
+Partition mapping in Naiad
+-------------------------------------------------------------------------------
+
+Running operations such as GroupBy or CoGroupBy requires a mapping from each
+sample to an integer. Each integer is mapped to a thread on a worker. In Naiad
+terminology a worker is a "process",  and a thread is a "core". There are as
+many physical replication of the computation flow as the number of threads in
+the system (<-t arg> x <-n arg> ).
+
+The mapping is as follows, where "TN" is the thread num and WN is the worker num:
+
+0, ..., TN-1, TN, ..., 2xTN-1, ... , (WN-1)xTN, ... WNxTN-1
+
+<-  P0   ->   <-  P1   ->             <-      Pn-1       ->
+
+and the same pattern repeats to integers after WNxTN-1. The general rule is that
+for an integer I, it will be mapped to the following worker and core:
+
+Worker process ID -> (I / TN) % WN
+Thread Physical ID -> I % TN
 
 
 -------------------------------------------------------------------------------
@@ -112,7 +136,7 @@ need to recompile the Naiad library, make clean, and rebuild the applications.
 Note that the make clean for the applications is necessary.
 
 You can also add logging directives any other place you want. For example to
-chase down the runtime overhead for the OSDI'16 rebuttal I change the sources a
+chase down the runtime overhead for the OSDI'16 rebuttal I changed the sources a
 reflected in "rebuttal-debug.diff". Again, don't forget to rebuild the Naiad
 library, make clean the application and rebuilding the applications.
 
