@@ -1,5 +1,6 @@
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -46,7 +47,11 @@ public class LogisticRegression
   public int loop_marker_;
 
   public long loop_time_stamp_;
+  public List<double> total_times_;
   public List<double> compute_times_;
+  public List<double> gradient_times_;
+
+  public static int truncate_index_ = 5;
 
   public List<int> sample_counter;
   public List<int> sync_l1_counter_;
@@ -92,7 +97,9 @@ public class LogisticRegression
     loop_index_ = 0;
     loop_marker_ = 0;
 
+    total_times_ = new List<double>();
     compute_times_ = new List<double>();
+    gradient_times_ = new List<double>();
     loop_time_stamp_ = Stopwatch.GetTimestamp();
 
     sample_counter = new List<int>();
@@ -187,6 +194,13 @@ public class LogisticRegression
       computation.Join();
       Console.Out.WriteLine("After Join!");
 
+
+      double average_total = lr.total_times_.GetRange(truncate_index_, iteration_num - truncate_index_).Average();
+      double average_compute = lr.compute_times_.GetRange(truncate_index_, iteration_num - truncate_index_).Average();
+      double average_idle = average_total - average_compute;
+      Console.Out.WriteLine("*** Average for the last {0:D2} iterations: compute(ms): {1:F2} total(ms): {2:F2} (idle(ms): {3:F2})",
+          iteration_num - truncate_index_, 1000 * average_compute, 1000 * average_total, 1000 * average_idle);
+
       Console.Out.WriteLine("Final Weight: " + PrintList(lr.weight_));
       Console.Out.WriteLine("Samples Counts: " +  PrintList(lr.sample_counter));
       Console.Out.WriteLine("Reduce Level 1 Counts: " + PrintList(lr.reduce_l1_counter_));
@@ -266,7 +280,7 @@ public class LogisticRegression
 
     lock(lock_) {
       sample_counter.Add(sample_count);
-      compute_times_.Add((double)(Stopwatch.GetTimestamp() - start_time) / (double)(Stopwatch.Frequency));
+      gradient_times_.Add((double)(Stopwatch.GetTimestamp() - start_time) / (double)(Stopwatch.Frequency));
     }
 
     var out_list = new List<Weight>();
@@ -373,18 +387,16 @@ public class LogisticRegression
 
         var elapsed = (double)(Stopwatch.GetTimestamp() - loop_time_stamp_) / (double)(Stopwatch.Frequency);
         loop_time_stamp_ = Stopwatch.GetTimestamp();
-        double average = 0;
-        double max = compute_times_[0];
-        foreach (var e in compute_times_) {
-          average += e / pnpw_;
-          if (e > max) {
-            max = e;
-          }
-        }
+        total_times_.Add(elapsed);
 
-        compute_times_.Clear();
-        Console.Out.WriteLine("Loop {0:D2} gradient(ms): [avg: {1:F2}, max: {2:F2}] total(ms): {3:F2} {4:S}",
-                              loop_index_, 1000 * average, 1000 * max, 1000 * elapsed, PrintList(compute_times_));
+        double gradient_max = gradient_times_.Max();
+        double gradient_average = gradient_times_.Average();
+        double compute = gradient_average * (pnpw_ / thread_num_);
+        compute_times_.Add(compute);
+        gradient_times_.Clear();
+
+        Console.Out.WriteLine("Loop {0:D2} compute(ms): {1:F2} [gradients avg: {2:F2}, max: {3:F2}] total(ms): {4:F2}",
+                              loop_index_, 1000 * compute, 1000 * gradient_average, 1000 * gradient_max, 1000 * elapsed);
         Console.Out.Flush();
       }
     }
