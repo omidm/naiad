@@ -11,20 +11,19 @@ of cores available at the worker, using the -t option. Also, you could have
 more than one partition per core. 
 
 Usage:
-  LogisticRegression.exe <dimension>
-                         <cluster_num>
-                         <iteration_num>
-                         <partition_num>
-                         <sample_num in million>
-                         <worker_num>
-                         <spin_wait in us>
+  KMeans.exe <dimension>
+            <cluster_num>
+            <iteration_num>
+            <partition_num>
+            <sample_num in million>
+            <spin_wait in us>
 
-If spin_wait is not zero the gradient phase is replaced by an exact busy loop.
+If spin_wait is not zero the clustering phase is replaced by an exact busy loop.
 
 To run N, T-threaded workers locally, luanch workers using the following command
 where PID is replaced by a unique integer from 0 to N-1 for each worker.
 
-    $ mono LogisticRegression.exe -n N --local -p PID -t T --inlineserializer <lr-arguments>
+    $ mono KMeans.exe -n N --local -p PID -t T --inlineserializer <lr-arguments>
 
 Makefile options:
     $ make             to compile
