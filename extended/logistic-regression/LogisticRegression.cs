@@ -369,7 +369,7 @@ public class LogisticRegression
     lock(lock_) {
       foreach (var w in weights) {
         for (int i = 0; i < dimension_; ++i) {
-          weight_[i] = w[i+1];
+          weight_[i] = w[i+2];
         }
         sync_count++;
       }
