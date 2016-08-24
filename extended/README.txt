@@ -11,7 +11,12 @@ example a cluster of EC2 nodes or on your local machine.
 
 For more information you can take a look at following tutorials:
     1. http://microsoftresearch.github.io/Naiad/ (has Naiad SDK)
-    2. naiad-tutorial.html in the current directory
+    2. http://www.cambridgeplus.net/tutorials/2015/NaiadTutorial_2015/index.html
+
+A copy of the useful documents can be found in the docs/ subdirectory:
+
+    docs/naiad-tutorial.html
+    docs/first-program.html
 
 
 -------------------------------------------------------------------------------

@@ -36,3 +36,9 @@ Makefile options:
 Default make is for Release mode, you can add "debug" prefix to generate the
 Debug mode, e.g. "make debug" or "make debug-run"
 
+
+
+** NOTE: take a look at the files in "progressive-files/" folder. There are few
+different versions of the code that I have written. Specifically, the
+"LogisticRegression-Migration.cs" one has some good points on migrating samples
+between node through changing the key mappings.
