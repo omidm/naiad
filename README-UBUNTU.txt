@@ -94,6 +94,7 @@ How to profile programs running under Mono
 -------------------------------------------------------------------------------
 
 Refer to the website: http://www.mono-project.com/docs/debug+profile/profile/profiler/
+[a copy of the documenet is at "extended/docs/mono-profiler.html]
 
 The simpler way to use the profiler is the following:
 
