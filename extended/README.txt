@@ -146,3 +146,32 @@ reflected in "rebuttal-debug.diff". Again, don't forget to rebuild the Naiad
 library, make clean the application and rebuilding the applications.
 
 
+-------------------------------------------------------------------------------
+Physical graph installation cost
+-------------------------------------------------------------------------------
+
+
+If you run the logistic
+regression application you will notice that the first iteration takes longer
+than the rest. Th overhead ha three sources:
+
+    1. Generating the samples.
+    2. Installing physical graph from logical graph.
+    3. Automatic code generation for serializations
+
+If you reduce the number of samples to only one per partition then the first
+cost would be negligible. Also if you run on a single node there would no code
+generation for serialization as there is no need to use the network. With these
+two tricks you can measure the graphical map installation cost.
+
+The first iteration of logistic regression running on a single node with
+negligible sample generation cost is about 300ms longer than successive
+iterations. So you can conclude that the installation cost is about 300ms.
+
+If you run the same experiment on two nodes the difference would be about
+2700ms. Bu activating the logs as directed above you will see that there are
+excessive time intervals spent on code generations such as:
+
+    ... Compiling codegen for System.Collections.Generic.List
+
+
