@@ -28,7 +28,6 @@ LR_APP_OPTIONS     += ' ' + str(config.DIMENSION)
 LR_APP_OPTIONS     += ' ' + str(config.ITERATION_NUM)
 LR_APP_OPTIONS     += ' ' + str(config.PARTITION_NUM)
 LR_APP_OPTIONS     += ' ' + str(config.SAMPLE_NUM_M)
-LR_APP_OPTIONS     += ' ' + str(config.WORKER_INSTANCE_NUM * config.WORKER_PER_INSTANCE)
 LR_APP_OPTIONS     += ' ' + str(config.SPIN_WAIT_US)
 
 
@@ -40,7 +39,6 @@ KM_APP_OPTIONS     += ' ' + str(config.CLUSTER_NUM)
 KM_APP_OPTIONS     += ' ' + str(config.ITERATION_NUM)
 KM_APP_OPTIONS     += ' ' + str(config.PARTITION_NUM)
 KM_APP_OPTIONS     += ' ' + str(config.SAMPLE_NUM_M)
-KM_APP_OPTIONS     += ' ' + str(config.WORKER_INSTANCE_NUM * config.WORKER_PER_INSTANCE)
 KM_APP_OPTIONS     += ' ' + str(config.SPIN_WAIT_US)
 
 
@@ -157,6 +155,6 @@ def clean_logs(worker_dnss):
         '-o', 'StrictHostKeyChecking=no',
         'ubuntu@' + dns, worker_command])
   
-    print '** Worker Cleaned: ' + dns
+    # print '** Worker Cleaned: ' + dns
 
 
