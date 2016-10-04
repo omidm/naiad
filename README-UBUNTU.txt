@@ -62,15 +62,21 @@ Refer to the website: http://www.mono-project.com/download/#download-lin
     $ sudo apt-get autoremove
 
 
-2. Download and install latest version of Mono (>4.2), from Mono project website:
-      http://www.mono-project.com/download/#download-lin
-   Note the specific instructions for Ubuntu 12.04 on the website. For your
-   convenience, here are the detailed steps you need to take for Ubuntu 12.04.
-   For the latest Version of the Ubuntu, refer to the website.
+2. Download and install latest version of Mono (>4.2), from Mono project
+   website: http://www.mono-project.com/download/#download-lin. Note the
+   specific instructions for Ubuntu 12.04 on the website. For your convenience,
+   here are the detailed steps you need to take. First add the package
+   repository to your system:
 
     $ sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
     $ echo "deb http://download.mono-project.com/repo/debian wheezy main" | sudo tee /etc/apt/sources.list.d/mono-xamarin.list
+
+On Ubuntu "12.04", you need to add one extra repository:
+
     $ echo "deb http://download.mono-project.com/repo/debian wheezy-libtiff-compat main" | sudo tee -a /etc/apt/sources.list.d/mono-xamarin.list
+
+Upgrade the packages and then install:
+
     $ sudo apt-get update
 
     $ sudo apt-get install mono-devel
@@ -79,13 +85,14 @@ Refer to the website: http://www.mono-project.com/download/#download-lin
     $ sudo apt-get install ca-certificates-mono
 
 Note: Maybe versions older than 4.2 would work as well, but it has not been
-tested. To get the older version through apt-get use following commands: 
+tested. To get the older version through apt-get default repositories use
+following commands: 
 
     $ sudo apt-get install mono-devel
     $ sudo apt-get install mono-complete
     $ sudo apt-get install mono-xbuild
 
-However, if you install the older versio, you need to first completely remove
+However, if you install the older version, you need to first completely remove
 it before installing the newer version as instructed above!
 
 
