@@ -1,6 +1,9 @@
 Installation steps
 ------------------
 
+NOTE: this repository is a modified version of the initial distribution.
+Please see the `README-UBUNTU.txt` file.
+
 Naiad is distributed as a Visual Studio 2013 solution, comprising 
 the following projects:
 
